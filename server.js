@@ -28,12 +28,17 @@ mongoose.connect('mongodb://127.0.0.1:27017/schoolDB')
   .catch(err => console.log(err));
 
 /* =======================
-   SCHEMAS + MODELS
+   SCHEMAS
 ======================= */
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  name: String
+  name: String,
+  role: {
+    type: String,
+    enum: ['admin', 'student'],
+    default: 'student'
+  }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -41,168 +46,132 @@ const User = mongoose.model('User', userSchema);
 const courseSchema = new mongoose.Schema({
   title: String
 });
-
 const Course = mongoose.model('Course', courseSchema);
 
 const enrollmentSchema = new mongoose.Schema({
   email: String,
   courseTitle: String
 });
-
 const Enrollment = mongoose.model('Enrollment', enrollmentSchema);
 
 /* =======================
-   AUTH MIDDLEWARE
+   AUTH
 ======================= */
 function isAuthenticated(req, res, next) {
-  if (req.session.user) {
-    next();
-  } else {
-    res.redirect('/login');
-  }
+  if (req.session.user) next();
+  else res.redirect('/login');
+}
+
+function isAdmin(req, res, next) {
+  if (req.session.role === 'admin') next();
+  else res.send('Admins only');
 }
 
 /* =======================
    ROUTES
 ======================= */
+app.get('/', (req, res) => res.redirect('/login'));
 
-// Root redirect
-app.get('/', (req, res) => {
-  res.redirect('/login');
-});
-
-// Login & Register pages
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public/login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public/register.html')));
 
-/* ========= REGISTER ========= */
+/* REGISTER */
 app.post('/register', async (req, res) => {
-  const { email, password, confirmPassword } = req.body;
+  const { email, password, confirmPassword, role } = req.body;
 
   if (password !== confirmPassword) {
-    return res.send('Passwords do not match <br><a href="/register">Try again</a>');
+    return res.send('Passwords do not match');
   }
 
   const existingUser = await User.findOne({ email });
-  if (existingUser) return res.send('User already exists <br><a href="/register">Try again</a>');
+  if (existingUser) return res.send('User exists');
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  await User.create({ email, password: hashedPassword });
+
+  await User.create({ email, password: hashedPassword, role });
 
   res.redirect('/login');
 });
 
-/* ========= LOGIN ========= */
+/* LOGIN */
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
+
   if (user && await bcrypt.compare(password, user.password)) {
     req.session.user = user.email;
+    req.session.role = user.role;
     res.redirect('/dashboard');
   } else {
-    res.send('Invalid credentials <br><a href="/login">Try again</a>');
+    res.send('Invalid credentials');
   }
 });
 
-/* ========= DASHBOARD ========= */
+/* DASHBOARD */
 app.get('/dashboard', isAuthenticated, (req, res) => {
   res.send(`
-    <h2>Welcome ${req.session.user}</h2>
+    <h2>Welcome ${req.session.user} (${req.session.role})</h2>
 
-    <h3>Add Name</h3>
-    <form action="/submit-name" method="POST">
-      <input type="text" name="name" placeholder="Enter your name" required>
-      <button>Save</button>
-    </form>
+    ${req.session.role === 'admin' ? `
+      <h3>Admin Actions</h3>
+      <a href="/course">Add Course</a><br>
 
-    <h3>Update Email</h3>
-    <form action="/update-email" method="POST">
-      <input type="email" name="oldEmail" placeholder="Old Email" required>
-      <input type="email" name="newEmail" placeholder="New Email" required>
-      <button>Update</button>
-    </form>
+      <form action="/delete-course" method="POST">
+        <input type="text" name="title" placeholder="Course Title" required>
+        <button>Delete Course</button>
+      </form>
 
-    <h3>Delete User</h3>
-    <form action="/delete-user" method="POST">
-      <input type="email" name="email" placeholder="Enter email to delete" required>
-      <button>Delete</button>
-    </form>
+      <form action="/delete-user" method="POST">
+        <input type="email" name="email" placeholder="User Email" required>
+        <button>Delete User</button>
+      </form>
+    ` : ''}
 
-    <h3>Courses</h3>
-    <a href="/course">Add Course</a><br>
-    <form action="/delete-course" method="POST">
-      <input type="text" name="title" placeholder="Course Title to delete" required>
-      <button>Delete Course</button>
-    </form>
-
-    <h3>Enrollments</h3>
-    <a href="/enroll">Enroll Student</a><br>
-
-    <br>
-    <a href="/users">View Users (JSON)</a><br>
-    <a href="/courses">View Courses (JSON)</a><br>
-    <a href="/enrollments">View Enrollments (JSON)</a><br><br>
+    <h3>Enroll</h3>
+    <a href="/enroll">Enroll Course</a><br><br>
 
     <a href="/logout">Logout</a>
   `);
 });
 
-/* ========= ADD NAME ========= */
-app.post('/submit-name', isAuthenticated, async (req, res) => {
-  const { name } = req.body;
-  await User.updateOne({ email: req.session.user }, { $set: { name } });
-  res.send(`Name saved: ${name} <br><a href="/dashboard">Back</a>`);
+/* COURSE (ADMIN ONLY) */
+app.get('/course', isAuthenticated, isAdmin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public/course.html'))
+);
+
+app.post('/course', isAuthenticated, isAdmin, async (req, res) => {
+  await Course.create({ title: req.body.title });
+  res.send('Course added');
 });
 
-/* ========= UPDATE EMAIL ========= */
-app.post('/update-email', isAuthenticated, async (req, res) => {
-  const { oldEmail, newEmail } = req.body;
-  await User.updateOne({ email: oldEmail }, { $set: { email: newEmail } });
-  res.send('Email updated successfully <br><a href="/dashboard">Back</a>');
+app.post('/delete-course', isAuthenticated, isAdmin, async (req, res) => {
+  await Course.deleteOne({ title: req.body.title });
+  res.send('Course deleted');
 });
 
-/* ========= DELETE USER ========= */
-app.post('/delete-user', isAuthenticated, async (req, res) => {
-  const { email } = req.body;
-  await User.deleteOne({ email });
-  res.send('User deleted <br><a href="/dashboard">Back</a>');
-});
+/* ENROLL */
+app.get('/enroll', isAuthenticated, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public/enroll.html'))
+);
 
-/* ========= COURSE ========= */
-app.get('/course', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'public/course.html')));
-app.post('/course', isAuthenticated, async (req, res) => {
-  const { title } = req.body;
-  await Course.create({ title });
-  res.send('Course added <br><a href="/dashboard">Back</a>');
-});
-app.post('/delete-course', isAuthenticated, async (req, res) => {
-  const { title } = req.body;
-  await Course.deleteOne({ title });
-  res.send('Course deleted <br><a href="/dashboard">Back</a>');
-});
-
-/* ========= ENROLL ========= */
-app.get('/enroll', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'public/enroll.html')));
 app.post('/enroll', isAuthenticated, async (req, res) => {
-  const { email, courseTitle } = req.body;
-  await Enrollment.create({ email, courseTitle });
-  res.send('Enrolled successfully <br><a href="/dashboard">Back</a>');
+  await Enrollment.create(req.body);
+  res.send('Enrolled successfully');
 });
 
-/* ========= READ ========= */
-app.get('/users', isAuthenticated, async (req, res) => res.json(await User.find()));
-app.get('/courses', isAuthenticated, async (req, res) => res.json(await Course.find()));
-app.get('/enrollments', isAuthenticated, async (req, res) => res.json(await Enrollment.find()));
+/* DELETE USER (ADMIN) */
+app.post('/delete-user', isAuthenticated, isAdmin, async (req, res) => {
+  await User.deleteOne({ email: req.body.email });
+  res.send('User deleted');
+});
 
-/* ========= LOGOUT ========= */
+/* LOGOUT */
 app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-/* =======================
-   SERVER
-======================= */
+/* SERVER */
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
