@@ -176,7 +176,8 @@ app.post('/enroll', isAuthenticated, async (req, res) => {
 
 /* DELETE USER (ADMIN) */
 app.post('/delete-user', isAuthenticated, isAdmin, async (req, res) => {
-  await User.deleteOne({ email: req.body.email });
+  const{email}=req.body
+  await User.deleteOne({ email});
   res.send('User deleted');
 });
 
