@@ -88,7 +88,13 @@ app.post('/register', async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  await User.create({ email, password: hashedPassword, role });
+  const newUser = new User({
+    email,
+    password: hashedPassword,
+    role
+  });
+
+  await newUser.save();
 
   res.redirect('/login');
 });
@@ -141,7 +147,11 @@ app.get('/course', isAuthenticated, isAdmin, (req, res) =>
 );
 
 app.post('/course', isAuthenticated, isAdmin, async (req, res) => {
-  await Course.create({ title: req.body.title });
+  const { title } = req.body;
+
+  const newCourse = new Course({ title });
+  await newCourse.save();
+
   res.send('Course added');
 });
 
@@ -156,7 +166,11 @@ app.get('/enroll', isAuthenticated, (req, res) =>
 );
 
 app.post('/enroll', isAuthenticated, async (req, res) => {
-  await Enrollment.create(req.body);
+  const { email, courseTitle } = req.body;
+
+  const newEnrollment = new Enrollment({ email, courseTitle });
+  await newEnrollment.save();
+
   res.send('Enrolled successfully');
 });
 
