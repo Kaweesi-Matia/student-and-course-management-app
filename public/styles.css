@@ -12,12 +12,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #ffffff; /* Changed background to white */
+  background: #ffffff;
+  /* Changed background to white */
   flex-direction: column;
 }
 
 /* CARD STYLE */
-h2, form, a {
+h2,
+form,
+a {
   text-align: center;
 }
 
@@ -28,7 +31,8 @@ h2 {
 
 /* FORM WRAPPER */
 form {
-  background: #f9f9f9; /* Slightly off-white for form card */
+  background: #f9f9f9;
+  /* Slightly off-white for form card */
   padding: 30px;
   border-radius: 12px;
   width: 320px;
@@ -56,7 +60,8 @@ input:focus {
 button {
   width: 100%;
   padding: 12px;
-  background: #4facfe; /* Blue button */
+  background: #4facfe;
+  /* Blue button */
   border: none;
   border-radius: 8px;
   color: white;
@@ -67,14 +72,16 @@ button {
 }
 
 button:hover {
-  background: #007bff; /* Darker blue on hover */
+  background: #007bff;
+  /* Darker blue on hover */
 }
 
 /* LINKS */
 a {
   display: block;
   margin-top: 15px;
-  color: #007bff; /* Ensure links are blue */
+  color: #007bff;
+  /* Ensure links are blue */
   text-decoration: none;
   font-size: 14px;
 }
@@ -86,6 +93,71 @@ a:hover {
 /* EXTRA SPACING FOR BACK LINKS */
 a:last-of-type {
   margin-top: 10px;
+}
+
+/* General form styling (optional for better look) */
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 50px;
+}
+
+form {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 300px;
+}
+
+/* Inputs + Select styling */
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  outline: none;
+}
+
+/* Focus effect */
+input:focus,
+select:focus {
+  border-color: #007bff;
+}
+
+/* Button styling */
+button {
+  width: 100%;
+  padding: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+/* Style select arrow (modern browsers) */
+select {
+  appearance: none;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+/* Optional: add custom dropdown arrow */
+select {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23007bff' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 /* RESPONSIVE */
